@@ -39,8 +39,6 @@ def printGeneration(arr):
     maxVal = 0
     numOfMax = 0
     for i in range(0, len(arr)):
-        #print(float2bin(arr[i].x))
-        #print(inhabitants[i].x, inhabitants[i].y, inhabitants[i].chance)
         ys.append(arr[i].y)
         xs.append(arr[i].x)
         chances.append(arr[i].chance)
@@ -54,8 +52,8 @@ def printGeneration(arr):
     print("________________________________________________________________")
 
 sizeOfGeneration = 10
-
 inhabitants = []
+mutationThreshold = 950
 
 #Область поиска минимума функции
 a = 1
@@ -75,12 +73,38 @@ def SetWeight(arr):
 
 SetWeight(inhabitants)
 
-#printGeneration()
-#print("_________________________________________________________________________________")
-
 #Создание нового поколения
 newGeneration = []
 
+
+def OnePointCrossoverWithCopy():
+    cut = random.randrange(0, 64)
+
+    b1 = float2bin(pair[0].x)
+    b1cut1 = b1[0:cut]
+    b1cut2 = b1[cut:64]
+
+    b2 = float2bin(pair[1].x)
+    b2cut1 = b2[0:cut]
+    b2cut2 = b2[cut:64]
+
+    ch1 = b1cut1 + b2cut2
+    ch2 = b2cut1 + b1cut2
+
+    # Мутация
+    if (random.randrange(0, 1000) > mutationThreshold):
+        rndR1 = random.randrange(30, len(ch1))
+        ch1 = setMutation(ch1, rndR1)
+
+        rndR2 = random.randrange(30, len(ch2))
+        ch2 = setMutation(ch2, rndR2)
+
+    if (bin2float(ch1) >= a and bin2float(ch1) <= b):
+        inhabitant = Inhabitant(bin2float(ch1), func(bin2float(ch1)))
+        newGeneration.append(inhabitant)
+    if (bin2float(ch2) >= a and bin2float(ch2) <= b):
+        inhabitant = Inhabitant(bin2float(ch2), func(bin2float(ch2)))
+        newGeneration.append(inhabitant)
 
 def TournamentWithReturnSelection():
     global aliveNewGeneration
@@ -94,7 +118,6 @@ def TournamentWithReturnSelection():
             aliveNewGeneration.append(newGeneration[rndNum1])
         else:
             aliveNewGeneration.append(newGeneration[rndNum2])
-
 
 def TournamentSelection():
     global aliveNewGeneration
@@ -126,15 +149,173 @@ def Proportional():
     for i in range(0, len(inhabitants)):
         x = random.randrange(0,1000) / 1000
 
-        for i in distribution:
-            if(x > i[0] and x < i[1]):
-                aliveNewGeneration.append(distribution[i])
-
+        for j in distribution:
+            if(x > j[0] and x < j[1]):
+                aliveNewGeneration.append(distribution[j])
+                break
 
 def Rank():
-    pass
+    global aliveNewGeneration
+    newGeneration.sort(key=lambda inhabitant: inhabitant.chance, reverse=True)
+
+    distributionRank = dict()
+    for i in range(0, len(newGeneration)):
+        if(i > 0 and newGeneration[i - 1].chance == newGeneration[i].chance):
+            distributionRank[i-1] = newGeneration[i]
+        else:
+            distributionRank[i] = newGeneration[i]
+
+    distribution = {}
+    sumchances = sum(inhabitant.chance for inhabitant in newGeneration)
+    beginRange = 0
+    endRange = 0
+    for i in distributionRank:
+        relative = i / sumchances
+        endRange += relative
+        distribution[(beginRange, endRange)] = newGeneration[i]
+        beginRange += relative
+
+    for i in range(0, len(inhabitants)):
+        x = random.randrange(0,1000) / 1000
+
+        for j in distribution:
+            if(x > j[0] and x < j[1]):
+                aliveNewGeneration.append(distribution[j])
+                break
+
+    print(newGeneration)
 
     #print(distribution)
+
+def StandartCrossover():
+    b1 = float2bin(pair[0].x)
+    s1 = b1[0]
+    p11 = b1[1:6]
+    p12 = b1[6:11]
+    m11 = b1[11:38]
+    m12 = b1[38:64]
+
+    b2 = float2bin(pair[1].x)
+    s2 = b2[0]
+    p21 = b2[1:6]
+    p22 = b2[6:11]
+    m21 = b2[11:38]
+    m22 = b2[38:64]
+
+    ch1 = s1 + p11 + p22 + m11 + m22
+    ch2 = s2 + p12 + p21 + m12 + m21
+
+    if (random.randrange(0, 1000) > mutationThreshold):
+        rndR1 = random.randrange(30, len(ch1))
+        ch1 = setMutation(ch1, rndR1)
+
+        rndR2 = random.randrange(30, len(ch2))
+        ch2 = setMutation(ch2, rndR2)
+
+    if (bin2float(ch1) >= a and bin2float(ch1) <= b):
+        inhabitant = Inhabitant(bin2float(ch1), func(bin2float(ch1)))
+        newGeneration.append(inhabitant)
+    if (bin2float(ch2) >= a and bin2float(ch2) <= b):
+        inhabitant = Inhabitant(bin2float(ch2), func(bin2float(ch2)))
+        newGeneration.append(inhabitant)
+
+def OnePointCrossover():
+    cut = random.randrange(1, 63)
+
+    b1 = float2bin(pair[0].x)
+    b1cut1 = b1[0:cut]
+    b1cut2 = b1[cut:64]
+
+    b2 = float2bin(pair[1].x)
+    b2cut1 = b2[0:cut]
+    b2cut2 = b2[cut:64]
+
+    ch1 = b1cut1 + b2cut2
+    ch2 = b2cut1 + b1cut2
+
+    # Мутация
+    if (random.randrange(0, 1000) > mutationThreshold):
+        rndR1 = random.randrange(30, len(ch1))
+        ch1 = setMutation(ch1, rndR1)
+
+        rndR2 = random.randrange(30, len(ch2))
+        ch2 = setMutation(ch2, rndR2)
+
+    if (bin2float(ch1) >= a and bin2float(ch1) <= b):
+        inhabitant = Inhabitant(bin2float(ch1), func(bin2float(ch1)))
+        newGeneration.append(inhabitant)
+    if (bin2float(ch2) >= a and bin2float(ch2) <= b):
+        inhabitant = Inhabitant(bin2float(ch2), func(bin2float(ch2)))
+        newGeneration.append(inhabitant)
+
+def TwoPointCrossover():
+    cut1 = random.randrange(1, 63)
+    cut2 = random.randrange(1, 63)
+
+    b1 = float2bin(pair[0].x)
+    b1cut1 = b1[0:cut1]
+    b1cut2 = b1[cut1:cut2]
+    b1cut3 = b1[cut2:64]
+
+    b2 = float2bin(pair[1].x)
+    b2cut1 = b2[0:cut1]
+    b2cut2 = b2[cut1:cut2]
+    b2cut3 = b2[cut2:64]
+
+    ch1 = b1cut1 + b2cut2 + b1cut3
+    ch2 = b2cut1 + b1cut2 + b2cut3
+
+    # Мутация
+    if (random.randrange(0, 1000) > mutationThreshold):
+        rndR1 = random.randrange(30, len(ch1))
+        ch1 = setMutation(ch1, rndR1)
+
+        rndR2 = random.randrange(30, len(ch2))
+        ch2 = setMutation(ch2, rndR2)
+
+    try:
+        if (bin2float(ch1) >= a and bin2float(ch1) <= b):
+            inhabitant = Inhabitant(bin2float(ch1), func(bin2float(ch1)))
+            newGeneration.append(inhabitant)
+        if (bin2float(ch2) >= a and bin2float(ch2) <= b):
+            inhabitant = Inhabitant(bin2float(ch2), func(bin2float(ch2)))
+            newGeneration.append(inhabitant)
+    except:
+        pass
+
+def EvenlyCrossover():
+    b1 = float2bin(pair[0].x)
+    b2 = float2bin(pair[1].x)
+    ch1 = ""
+
+    for i in range(0, 64):
+        parent = random.randrange(0, 1)
+        if parent == 0:
+            ch1 += b1[i]
+        else:
+            ch1 += b2[i]
+
+    ch2 = ""
+    for i in range(0, 64):
+        parent = random.randrange(0, 1)
+        if parent == 0:
+            ch2 += b1[i]
+        else:
+            ch2 += b2[i]
+
+    if (random.randrange(0, 1000) > mutationThreshold):
+        rndR1 = random.randrange(30, len(ch1))
+        ch1 = setMutation(ch1, rndR1)
+
+        rndR2 = random.randrange(30, len(ch2))
+        ch2 = setMutation(ch2, rndR2)
+
+        if (bin2float(ch1) >= a and bin2float(ch1) <= b):
+            inhabitant = Inhabitant(bin2float(ch1), func(bin2float(ch1)))
+            newGeneration.append(inhabitant)
+        if (bin2float(ch2) >= a and bin2float(ch2) <= b):
+            inhabitant = Inhabitant(bin2float(ch2), func(bin2float(ch2)))
+            newGeneration.append(inhabitant)
 
 
 for r in range(0, 20):
@@ -145,64 +326,12 @@ for r in range(0, 20):
             rndNum = random.randrange(0, len(inhabitants))
             pair.append(inhabitants[rndNum])
 
-        b1 = float2bin(pair[0].x)
-        s1 = b1[0]
-        p11 = b1[1:6]
-        p12 = b1[6:11]
-        m11 = b1[11:38]
-        m12 = b1[38:64]
+        OnePointCrossoverWithCopy()
 
-        b2 = float2bin(pair[1].x)
-        s2 = b2[0]
-        p21 = b2[1:6]
-        p22 = b2[6:11]
-        m21 = b2[11:38]
-        m22 = b2[38:64]
-
-        #Мутация
-        if(random.randrange(0, 1000) > 950):
-            ch1 = s1 + p11 + p22 + m11 + m22
-            rndR1 = random.randrange(30, len(ch1))
-            ch1 = setMutation(ch1, rndR1)
-
-            floatCh1 = bin2float(ch1)
-            #print(floatCh1)
-
-            ch2 = s2 + p12 + p21 + m12 + m21
-            rndR2 = random.randrange(30, len(ch2))
-            ch2 = setMutation(ch2, rndR2)
-
-            floatCh2 = bin2float(ch2)
-            #print(floatCh2)
-
-            if(bin2float(ch1) >= a and bin2float(ch1) <= b):
-                inhabitant = Inhabitant(bin2float(ch1), func(bin2float(ch1)))
-                newGeneration.append(inhabitant)
-            if(bin2float(ch2) >= a and bin2float(ch2) <= b):
-                inhabitant = Inhabitant(bin2float(ch2), func(bin2float(ch2)))
-                newGeneration.append(inhabitant)
-        else:
-            # Не мутация
-            ch1 = s1 + p11 + p22 + m11 + m22
-            ch2 = s2 + p12 + p21 + m12 + m21
-
-            floatCh2 = bin2float(ch2)
-            #print(floatCh2)
-            floatCh1 = bin2float(ch1)
-            #print(floatCh1)
-
-            if (bin2float(ch1) >= a and bin2float(ch1) <= b):
-                inhabitant = Inhabitant(bin2float(ch1), func(bin2float(ch1)))
-                newGeneration.append(inhabitant)
-            if (bin2float(ch2) >= a and bin2float(ch2) <= b):
-                inhabitant = Inhabitant(bin2float(ch2), func(bin2float(ch2)))
-                newGeneration.append(inhabitant)
-
-    #Турнирный отбор
     aliveNewGeneration = []
     SetWeight(newGeneration)
 
-    Proportional()
+    TournamentSelection()
 
     # Дорогу молодым
     try:
@@ -211,7 +340,6 @@ for r in range(0, 20):
     except:
         print(len(aliveNewGeneration))
 
-    #print('a')
     newGeneration = []
 
     #Расчет функции полезности для нового поколения
@@ -219,5 +347,3 @@ for r in range(0, 20):
 
     printGeneration(aliveNewGeneration)
 
-
-# турнирный отбор особи
