@@ -51,7 +51,7 @@ def printGeneration(arr):
     print(arr[numOfMax].x, arr[numOfMax].y, arr[numOfMax].chance)
     print("________________________________________________________________")
 
-sizeOfGeneration = 10
+sizeOfGeneration = 100
 inhabitants = []
 mutationThreshold = 950
 
@@ -317,6 +317,22 @@ def EvenlyCrossover():
             inhabitant = Inhabitant(bin2float(ch2), func(bin2float(ch2)))
             newGeneration.append(inhabitant)
 
+print("Какой метод скрещивания использовать?: \n"
+      "0 - Стандартный \n"
+      "1 - Одноточечный \n"
+      "2 - Одноточечный с возможностью перезаписи одного из родителей \n"
+      "3 - Двуточечный \n"
+      "4 - Равномерный \n")
+
+crossoverMethod = input()
+
+print("Какой метод отбора использовать?: \n"
+      "0 - Ранговый \n"
+      "1 - Пропорциональный \n"
+      "2 - Турнирный \n"
+      "3 - Турнирный с возвращением \n")
+
+selectionMethod = input()
 
 for r in range(0, 20):
     while(len(newGeneration) < len(inhabitants) * 2):
@@ -326,12 +342,36 @@ for r in range(0, 20):
             rndNum = random.randrange(0, len(inhabitants))
             pair.append(inhabitants[rndNum])
 
-        OnePointCrossoverWithCopy()
+        match crossoverMethod:
+            case '0':
+                StandartCrossover()
+            case '1':
+                OnePointCrossover()
+            case '2':
+                OnePointCrossoverWithCopy()
+            case '3':
+                TwoPointCrossover()
+            case '4':
+                EvenlyCrossover()
+            case _:
+                "Ошибка ввода на этапе выбора метода скрещивания"
+                exit(-1)
 
     aliveNewGeneration = []
     SetWeight(newGeneration)
 
-    TournamentSelection()
+    match selectionMethod:
+        case '0':
+            Rank()
+        case '1':
+            Proportional()
+        case '2':
+            TournamentSelection()
+        case '3':
+            TournamentWithReturnSelection()
+        case _:
+            "Ошибка ввода на этапе выбора метода селекции"
+            exit(-1)
 
     # Дорогу молодым
     try:
