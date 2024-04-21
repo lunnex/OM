@@ -26,7 +26,8 @@ def prim(matrix):
 
 
 def kruskal(matrix):
-    edges = get_sorted_edges(matrix)
+    edges_with_weight = get_edges_with_weight(matrix)
+    edges = get_edges_without_weight(edges_with_weight)
     tree = []
 
     for edge in edges:
@@ -40,14 +41,24 @@ def kruskal(matrix):
     return tree
 
 
-def get_sorted_edges(matrix):
+def get_edges_with_weight(matrix):
     result = dict()
     for i, row in enumerate(matrix):
         for j, column in enumerate(row):
-            if i == j or (j, i) in result:
+            if i == j:
                 continue
             result[(i, j)] = matrix[i][j]
-    return dict(sorted(result.items(), key=lambda item: item[1]))
+
+    return sorted(result.items(), key=lambda x: x[1])
+
+
+def get_edges_without_weight(sorted_list_with_weight):
+    sorted_list_without_weight = []
+
+    for item in sorted_list_with_weight:
+        sorted_list_without_weight.append(item[0])
+
+    return sorted_list_without_weight
 
 
 left_nodes = []
@@ -87,4 +98,4 @@ g = [[0, 5, 6, 7, 8, 9],
      [8, 3, 8, 6, 0, 4],
      [9, 4, 7, 5, 4, 0]]
 
-print(prim(g))
+print(kruskal(g))
