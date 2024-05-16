@@ -1,233 +1,254 @@
-import math
+import copy
 import random
-import struct
-
+import sys
 import numpy as np
+
 
 class Inhabitant:
     def __init__(self, x):
         self.edges = x
-        self.chance = 0
+        self.weight = 0
 
 
-visited_nodes = []
+def is_circle(tree):
+    visited_nodes = []
 
+    if len(tree) == 0:
+        return False
 
-def is_circle(branch, max_power):
-    if visited_nodes.count(branch[0]) > max_power - 1 or visited_nodes.count(branch[1]) > max_power - 1:
-        return True
+    for edge in tree:
+        if edge[0] in visited_nodes and edge[1] in visited_nodes:
+            return True
 
-    if branch[0] in visited_nodes and branch[1] in visited_nodes:
-        return True
-
+        for node in edge:
+            if node not in visited_nodes:
+                visited_nodes.append(node)
     return False
 
 
-def is_adjacent(edge, num_of_iteration):
-    if num_of_iteration == 0:
-        fill_visited_nodes(edge)
-        return True
-
-    if edge[0] not in visited_nodes and edge[1] not in visited_nodes:
-        return False
-
-    fill_visited_nodes(edge)
-    return True
+def is_make_circle(tree, edge):
+    deep_copy_tree = copy.deepcopy(tree)
+    deep_copy_tree.append(edge)
+    return is_circle(deep_copy_tree)
 
 
 def is_already_contains_edge(tree, edge):
-    if (edge[1], edge[0]) in tree:
+    if (edge[1], edge[0]) in tree or (edge[0], edge[1]) in tree:
         return True
     return False
 
 
-def fill_visited_nodes(edge):
-    for node in edge:
-        visited_nodes.append(node)
+def is_full_tree(tree, matrix):
+    all_nodes = range(0, len(matrix) - 1)
+    nodes_in_tree = []
+
+    for edge in tree:
+        for node in edge:
+            nodes_in_tree.append(node)
+
+    for edge in all_nodes:
+        if edge not in nodes_in_tree:
+            return False
+
+    return True
 
 
-def is_full_tree(tree, matrix_size):
-    if len(tree) < matrix_size - 1:
+def is_the_same_node(edge):
+    return edge[0] == edge[1]
+
+def make_hierarchy(tree):
+    visited_tree = []
+    
+    v = [item for item in tree.edges if tree.edges[0][0] in item]
+    print(tree.edges)
+    print(" ")
+    i=0
+    while v:
+        vn = []
+        for x in v:
+            vn = [item for item in tree.edges if (x[0] in item or x[1] in item)]
+            if x in vn:
+                tree.edges.remove(x)
+            print(vn)
+
+        v = vn
+        i+=1
+        if i > 100:
+            break
+
+
+
+
+
+def is_correct_tree_with_new_edge(tree, new_edge):
+    return (not is_already_contains_edge(tree, new_edge)
+            and not is_make_circle(tree, new_edge)
+            and not is_the_same_node(new_edge))
+
+
+def is_correct_tree(tree):
+    for edge in tree:
+        if is_the_same_node(edge):
+            return False
+
+    if is_circle(tree):
         return False
-    else:
-        return True
+
+    is_contains_reverse_edges = False
+
+    for edge in tree:
+        is_contains_reverse_edges |= is_already_contains_edge(tree, edge)
+
+    return is_contains_reverse_edges
 
 
-def func (x):
-    return math.sin((5/2) * math.cos(x))
-    #return x
+def create_first_population(matrix, size_of_generation, max_attempts):
+    generation = []
 
-def bin2float(b):
-    h = int(b, 2).to_bytes(8, byteorder="big")
-    return struct.unpack('>d', h)[0]
+    for i in range(0, size_of_generation):
+        tree = []
+        attempts = 0
 
-def float2bin(f):
-    [d] = struct.unpack(">Q", struct.pack(">d", f))
-    return f'{d:064b}'
+        while len(tree) < len(matrix) - 1:
+            new_edge = (random.randrange(0, len(matrix)), random.randrange(0, len(matrix)))
+            if is_correct_tree_with_new_edge(tree, new_edge):
+                tree.append(new_edge)
+            else:
+                attempts += 1
+                if attempts > max_attempts:
+                    tree.clear()
+                    attempts = 0
+                    continue
+        generation.insert(i, Inhabitant(tree))
 
-def setMutation(m1, rndR1):
-    m1List = list(m1)
-    if(m1[rndR1] == 0):
-        m1List[rndR1] = '1'
-        m1 = ''.join(m1List)
-    else:
-        m1List[rndR1] = '0'
-        m1 = ''.join(m1List)
-    return m1
+    return generation
 
-def printGeneration(arr):
-    ys = []
-    xs = []
-    chances = []
-    maxVal = 0
-    numOfMax = 0
-    for i in range(0, len(arr)):
-        ys.append(arr[i].y)
-        xs.append(arr[i].x)
-        chances.append(arr[i].chance)
-        if(maxVal < arr[i].chance):
-            maxVal = arr[i].chance
-            numOfMax = i
+
+def get_weight(matrix, tree):
+    weight = 0
+    for edge in tree.edges:
+        weight += matrix[int(edge[0])][int(edge[1])]
+    return weight
+
+
+def selection(new_population, size_of_generation):
+    result = []
+
+    while len(result) < size_of_generation:
+        first_index = random.randrange(0, len(new_population))
+        second_index = random.randrange(0, len(new_population))
+
+        if new_population[first_index].weight > new_population[second_index].weight:
+            result.append(new_population[second_index])
+        else:
+            result.append(new_population[first_index])
+
+    return result
+
+
+def crossover(matrix, pair, mutation_threshold, max_attempts):
+    is_correct = False
+    ind1 = pair[0]
+    ind2 = pair[1]
+
+    attempts = 0
+    while not is_correct:
+        if attempts > max_attempts:
+            break
+
+        cut_point = random.randrange(0, len(matrix))
+
+        b1cut1 = pair[0].edges[0:cut_point]
+        b1cut2 = pair[0].edges[cut_point:len(matrix) - 1]
+        b2cut1 = pair[1].edges[0:cut_point]
+        b2cut2 = pair[1].edges[cut_point:len(matrix) - 1]
+
+        ind1 = b1cut1 + b2cut2
+        ind2 = b2cut1 + b1cut2
+
+        ind1 = Inhabitant(mutation(matrix, ind1, mutation_threshold))
+        ind2 = Inhabitant(mutation(matrix, ind2, mutation_threshold))
+
+        is_correct = is_correct_tree(ind1.edges) and is_correct_tree(ind2.edges)
+
+        attempts += 1
+
+    return ind1, ind2
+
+
+def mutation(matrix, child, mutation_threshold):
+    if random.randrange(0, 1000) > mutation_threshold:
+        point_for_mutation = random.randrange(0, len(matrix) - 1)
+
+        node1 = random.randrange(0, len(matrix) - 1)
+        node2 = random.randrange(0, len(matrix) - 1)
+
+        resulted_edge = (node1, node2)
+        child[point_for_mutation] = resulted_edge
+    return child
+
+
+def get_pair(population):
+    pair = []
+    while len(pair) < 2:
+        random_number = random.randrange(0, len(population))
+        pair.append(population[random_number])
+    return pair
+
+
+def print_info(population):
+    trees = []
+    weights = []
+    max_weight = sys.maxsize
+    number_of_the_best_tree = 0
+    for i in range(0, len(population)):
+        trees.append(population[i])
+        weights.append(population[i].weight)
+        if max_weight > population[i].weight:
+            max_weight = population[i].weight
+            number_of_the_best_tree = i
     print("Средние значения в поколении")
-    print(np.average(xs), np.average(ys), np.average(chances))
+    print(np.average(weights))
     print("Особь с наибольшим значением функциии полезности")
-    print(arr[numOfMax].x, arr[numOfMax].y, arr[numOfMax].chance)
+    print(population[number_of_the_best_tree].edges, population[number_of_the_best_tree].weight)
     print("________________________________________________________________")
 
 
-sizeOfGeneration = 5
-countOfIterations = 10
-inhabitants = []
-mutationThreshold = 1000
+def process(count_of_iterations, size_of_generation, matrix, mutation_threshold, max_attempts):
+    population = create_first_population(matrix, size_of_generation, max_attempts)
+    next_population = []
 
-#Область поиска минимума функции
-a = 1
-b = 50
+    for i in range(0, count_of_iterations):
+        new_trees = []
 
-g = [[0, 5, 6, 7, 8, 9],
+        while len(next_population) < len(population) * 2:
+            pair = get_pair(population)
+
+            new_trees = crossover(matrix, pair, mutation_threshold, max_attempts)
+            next_population.append(new_trees[0])
+            next_population.append(new_trees[1])
+
+        for tree in next_population:
+            tree.weight = get_weight(matrix, tree)
+
+        next_population = selection(new_trees, size_of_generation)
+
+        population = copy.deepcopy(next_population)
+        next_population.clear()
+
+        print_info(population)
+
+
+q = [[0, 5, 6, 7, 8, 9],
      [5, 0, 1, 2, 3, 4],
      [6, 1, 0, 9, 8, 7],
      [7, 2, 9, 0, 6, 5],
      [8, 3, 8, 6, 0, 4],
      [9, 4, 7, 5, 4, 0]]
 
-#Порождаем перую популяцию
-for i in range(0, sizeOfGeneration):
-    edges = []
-    j = 0
-    while len(edges) < len(g) - 1:
-        newEdge = (random.randrange(0, len(g)), random.randrange(0, len(g)))
-        if not is_already_contains_edge(edges, newEdge) and not is_circle(newEdge, 2):
-            edges.append((random.randrange(0, len(g)), random.randrange(0, len(g))))
-            j += 1
-    visited_nodes.clear()
-    inhabitants.insert(i, Inhabitant(edges))
 
-#Считаем относительный вес
-def SetWeight(arr):
-    for i in range(0, len(arr)):
-        weight = 0
-        for edge in arr[i].edges:
-            weight += g[edge[0]][edge[1]]
+#process(50, 50, q, 900, 50)
 
-        arr[i].chance = weight
-
-SetWeight(inhabitants)
-
-#Создание нового поколения
-newGeneration = []
-
-
-
-def TournamentSelection():
-    global aliveNewGeneration
-
-    tournamentOrder = random.sample(range(len(newGeneration)), len(newGeneration))
-    i = 0
-
-    while (len(aliveNewGeneration) < len(inhabitants)):
-        if (newGeneration[tournamentOrder[i]].chance > newGeneration[tournamentOrder[i + 1]].chance):
-            aliveNewGeneration.append(newGeneration[tournamentOrder[i]])
-        else:
-            aliveNewGeneration.append(newGeneration[tournamentOrder[i + 1]])
-        i += 2
-
-
-    #print(distribution)
-
-def OnePointCrossover():
-    cut = random.randrange(60, 63)
-    numOfEdge = random.randrange(0, len(g) - 1)
-    leftOrRight = random.randrange(0, 1)
-
-    b1 = float2bin(pair[0].edges[numOfEdge][leftOrRight])
-    b1cut1 = b1[0:cut]
-    b1cut2 = b1[cut:64]
-
-    b2 = float2bin(pair[1].edges[numOfEdge][leftOrRight])
-    b2cut1 = b2[0:cut]
-    b2cut2 = b2[cut:64]
-
-    ch1 = b1cut1 + b2cut2
-    ch2 = b2cut1 + b1cut2
-
-
-
-    # Мутация
-    if (random.randrange(0, 1000) > mutationThreshold):
-        rndR1 = random.randrange(30, len(ch1))
-        ch1 = setMutation(ch1, rndR1)
-
-        rndR2 = random.randrange(30, len(ch2))
-        ch2 = setMutation(ch2, rndR2)
-
-
-    edge0 = list(pair[0].edges[numOfEdge])
-    edge1 = list(pair[1].edges[numOfEdge])
-
-    edge0[leftOrRight] = bin2float(ch1)
-    edge1[leftOrRight] = bin2float(ch2)
-
-    pair[0].edges[numOfEdge] = edge0
-    pair[1].edges[numOfEdge] = edge1
-
-
-
-   # newGeneration.append(e)
-    newGeneration.append(pair[1].edges[numOfEdge][leftOrRight])
-
-
-
-
-
-for r in range(0, countOfIterations):
-    while(len(newGeneration) < len(inhabitants) * 2):
-        pair = []
-        while len(pair) < 2:
-            #Случайным образом получаем особь
-            rndNum = random.randrange(0, len(inhabitants))
-            pair.append(inhabitants[rndNum])
-
-        OnePointCrossover()
-
-    aliveNewGeneration = []
-    SetWeight(newGeneration)
-
-    TournamentSelection()
-
-    # Дорогу молодым
-    try:
-        for i in range(0, len(inhabitants)):
-            inhabitants[i] = aliveNewGeneration[i]
-    except:
-        print(len(aliveNewGeneration))
-
-    newGeneration = []
-
-    #Расчет функции полезности для нового поколения
-    SetWeight(inhabitants)
-
-    printGeneration(aliveNewGeneration)
-
-
-
+a = create_first_population(q, 1, 50)
+print(a[0].edges)
+make_hierarchy(a[0])
