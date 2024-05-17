@@ -56,37 +56,57 @@ def is_full_tree(tree, matrix):
 def is_the_same_node(edge):
     return edge[0] == edge[1]
 
-def make_hierarchy(tree):
-    visited_tree = []
-    
-    v = [item for item in tree.edges if tree.edges[0][0] in item]
-    print(tree.edges)
-    print(" ")
-    i=0
-    while v:
-        vn = []
-        for x in v:
-            vn = [item for item in tree.edges if (x[0] in item or x[1] in item)]
-            if x in vn:
-                tree.edges.remove(x)
-            print(vn)
 
-        v = vn
-        i+=1
+def is_connected(tree):
+    visited_tree = []
+    copy_tree = copy.deepcopy(tree)
+    
+    adjacent_tree = [item for item in copy_tree if copy_tree[0][0] in item]
+    i = 0
+    for adjacent_edges in adjacent_tree:
+        for adjacent_node in adjacent_edges:
+            new_edges = [item for item in copy_tree if (adjacent_edges[0] in item or adjacent_edges[1] in item)]
+            for edge in new_edges:
+                for node in edge:
+                    if node not in visited_tree:
+                        visited_tree.append(node)
+                adjacent_tree.append(edge)
+                copy_tree.remove(edge)
+
         if i > 100:
             break
+    if len(visited_tree) != len(tree) + 1:
+        return False
+    else:
+        return True
 
 
+def is_adjust_constraint(matrix, tree, constraint):
+    nodes = range(0, len(matrix))
+
+    for node in nodes:
+        if len([item for item in tree if node in item]) > constraint:
+            return False
+    return True
 
 
+def is_correct_tree_with_new_edge(matrix, tree, new_edge):
+    if is_already_contains_edge(tree, new_edge):
+        return False
 
-def is_correct_tree_with_new_edge(tree, new_edge):
-    return (not is_already_contains_edge(tree, new_edge)
-            and not is_make_circle(tree, new_edge)
-            and not is_the_same_node(new_edge))
+    if is_make_circle(tree, new_edge):
+        return False
+
+    if is_the_same_node(new_edge):
+        return False
+
+    if not is_adjust_constraint(matrix, tree, 2):
+        return False
+
+    return True
 
 
-def is_correct_tree(tree):
+def is_correct_tree(matrix, tree):
     for edge in tree:
         if is_the_same_node(edge):
             return False
@@ -94,12 +114,18 @@ def is_correct_tree(tree):
     if is_circle(tree):
         return False
 
-    is_contains_reverse_edges = False
+    if not is_connected(tree):
+        return False
+
+    if not is_adjust_constraint(matrix, tree, 2):
+        return False
+
+    is_not_contains_reverse_edges = False
 
     for edge in tree:
-        is_contains_reverse_edges |= is_already_contains_edge(tree, edge)
+        is_not_contains_reverse_edges |= is_already_contains_edge(tree, edge)
 
-    return is_contains_reverse_edges
+    return not is_not_contains_reverse_edges
 
 
 def create_first_population(matrix, size_of_generation, max_attempts):
@@ -111,8 +137,9 @@ def create_first_population(matrix, size_of_generation, max_attempts):
 
         while len(tree) < len(matrix) - 1:
             new_edge = (random.randrange(0, len(matrix)), random.randrange(0, len(matrix)))
-            if is_correct_tree_with_new_edge(tree, new_edge):
+            if is_correct_tree_with_new_edge(matrix, tree, new_edge):
                 tree.append(new_edge)
+                attempts = 0
             else:
                 attempts += 1
                 if attempts > max_attempts:
@@ -153,8 +180,9 @@ def crossover(matrix, pair, mutation_threshold, max_attempts):
 
     attempts = 0
     while not is_correct:
+
         if attempts > max_attempts:
-            break
+            return None
 
         cut_point = random.randrange(0, len(matrix))
 
@@ -169,7 +197,7 @@ def crossover(matrix, pair, mutation_threshold, max_attempts):
         ind1 = Inhabitant(mutation(matrix, ind1, mutation_threshold))
         ind2 = Inhabitant(mutation(matrix, ind2, mutation_threshold))
 
-        is_correct = is_correct_tree(ind1.edges) and is_correct_tree(ind2.edges)
+        is_correct = is_correct_tree(matrix, ind1.edges) and is_correct_tree(matrix, ind2.edges)
 
         attempts += 1
 
@@ -207,6 +235,10 @@ def print_info(population):
         if max_weight > population[i].weight:
             max_weight = population[i].weight
             number_of_the_best_tree = i
+
+    for i in population:
+        print(i.edges)
+
     print("Средние значения в поколении")
     print(np.average(weights))
     print("Особь с наибольшим значением функциии полезности")
@@ -225,8 +257,9 @@ def process(count_of_iterations, size_of_generation, matrix, mutation_threshold,
             pair = get_pair(population)
 
             new_trees = crossover(matrix, pair, mutation_threshold, max_attempts)
-            next_population.append(new_trees[0])
-            next_population.append(new_trees[1])
+            if new_trees is not None:
+                next_population.append(new_trees[0])
+                next_population.append(new_trees[1])
 
         for tree in next_population:
             tree.weight = get_weight(matrix, tree)
@@ -247,8 +280,8 @@ q = [[0, 5, 6, 7, 8, 9],
      [9, 4, 7, 5, 4, 0]]
 
 
-#process(50, 50, q, 900, 50)
+process(50, 4, q, 900, 1000)
 
-a = create_first_population(q, 1, 50)
-print(a[0].edges)
-make_hierarchy(a[0])
+#a = create_first_population(q, 1, 50)
+#print(a[0].edges)
+#make_hierarchy(a[0])
