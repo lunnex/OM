@@ -4,32 +4,74 @@ import sys
 import numpy as np
 
 
+class Graph:
+    def __init__(self, edges, n):
+        self.graph = [[] for _ in range(n)]
+        self.n = n
+        for (src, dest) in edges:
+            self.graph[src].append(dest)
+            self.graph[dest].append(src)  # Make the graph undirected
+
+    def isCyclicUtil(self, v, visited, parent):
+        visited[v] = True
+
+        for neighbor in self.graph[v]:
+            if not visited[neighbor]:
+                if self.isCyclicUtil(neighbor, visited, v):
+                    return True
+            elif neighbor != parent:
+                return True
+
+        return False
+
+    def isCyclic(self):
+        visited = [False] * self.n
+        for node in range(self.n):
+            if not visited[node]:
+                if self.isCyclicUtil(node, visited, -1):
+                    return True
+        return False
+
+    def isConnectedUtil(self, v, visited):
+        visited[v] = True
+        for neighbor in self.graph[v]:
+            if not visited[neighbor]:
+                self.isConnectedUtil(neighbor, visited)
+
+    def isConnected(self):
+        visited = [False] * self.n
+        self.isConnectedUtil(0, visited)  # Start from any vertex, here we choose 0
+
+        if any(not v for v in visited):
+            return False
+        return True
+
+    def hasLessThanTwoEdges(self):
+        for node in range(self.n):
+            if len(self.graph[node]) > 2:
+                return False
+        return True
+
+
 class Inhabitant:
     def __init__(self, x):
         self.edges = x
         self.weight = 0
 
 
-def is_circle(tree):
-    visited_nodes = []
+def is_circle(matrix, tree):
+    graph = Graph(tree, len(matrix))
 
-    if len(tree) == 0:
+    if graph.isCyclic():
+        return True
+    else:
         return False
 
-    for edge in tree:
-        if edge[0] in visited_nodes and edge[1] in visited_nodes:
-            return True
 
-        for node in edge:
-            if node not in visited_nodes:
-                visited_nodes.append(node)
-    return False
-
-
-def is_make_circle(tree, edge):
+def is_make_circle(matrix, tree, edge):
     deep_copy_tree = copy.deepcopy(tree)
     deep_copy_tree.append(edge)
-    return is_circle(deep_copy_tree)
+    return is_circle(matrix, deep_copy_tree)
 
 
 def is_already_contains_edge(tree, edge):
@@ -57,44 +99,23 @@ def is_the_same_node(edge):
     return edge[0] == edge[1]
 
 
-def is_connected(tree):
-    visited_tree = []
-    copy_tree = copy.deepcopy(tree)
-    
-    adjacent_tree = [item for item in copy_tree if copy_tree[0][0] in item]
-    i = 0
-    for adjacent_edges in adjacent_tree:
-        for adjacent_node in adjacent_edges:
-            new_edges = [item for item in copy_tree if (adjacent_edges[0] in item or adjacent_edges[1] in item)]
-            for edge in new_edges:
-                for node in edge:
-                    if node not in visited_tree:
-                        visited_tree.append(node)
-                adjacent_tree.append(edge)
-                copy_tree.remove(edge)
+def is_connected(matrix, tree):
+    graph = Graph(tree, len(matrix))
 
-        if i > 100:
-            break
-    if len(visited_tree) != len(tree) + 1:
-        return False
-    else:
-        return True
+    return graph.isConnected()
 
 
 def is_adjust_constraint(matrix, tree, constraint):
-    nodes = range(0, len(matrix))
+    graph = Graph(tree, len(matrix))
 
-    for node in nodes:
-        if len([item for item in tree if node in item]) > constraint:
-            return False
-    return True
+    return graph.hasLessThanTwoEdges()
 
 
 def is_correct_tree_with_new_edge(matrix, tree, new_edge):
     if is_already_contains_edge(tree, new_edge):
         return False
 
-    if is_make_circle(tree, new_edge):
+    if is_make_circle(matrix, tree, new_edge):
         return False
 
     if is_the_same_node(new_edge):
@@ -111,21 +132,21 @@ def is_correct_tree(matrix, tree):
         if is_the_same_node(edge):
             return False
 
-    if is_circle(tree):
+    if is_circle(matrix, tree):
         return False
 
-    if not is_connected(tree):
+    if not is_connected(matrix, tree):
         return False
 
     if not is_adjust_constraint(matrix, tree, 2):
         return False
 
-    is_not_contains_reverse_edges = False
+    #is_not_contains_reverse_edges = False
 
-    for edge in tree:
-        is_not_contains_reverse_edges |= is_already_contains_edge(tree, edge)
+    #for edge in tree:
+    #    is_not_contains_reverse_edges |= is_already_contains_edge(tree, edge)
 
-    return not is_not_contains_reverse_edges
+    return True
 
 
 def create_first_population(matrix, size_of_generation, max_attempts):
@@ -236,8 +257,8 @@ def print_info(population):
             max_weight = population[i].weight
             number_of_the_best_tree = i
 
-    for i in population:
-        print(i.edges)
+    #for i in population:
+    #    print(i.edges)
 
     print("Средние значения в поколении")
     print(np.average(weights))
@@ -280,8 +301,5 @@ q = [[0, 5, 6, 7, 8, 9],
      [9, 4, 7, 5, 4, 0]]
 
 
-process(50, 4, q, 900, 1000)
+process(500, 1000, q, 900, 100)
 
-#a = create_first_population(q, 1, 50)
-#print(a[0].edges)
-#make_hierarchy(a[0])
